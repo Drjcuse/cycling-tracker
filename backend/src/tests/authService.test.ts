@@ -1,6 +1,6 @@
 /// <reference types="vitest" />
 import jwt from 'jsonwebtoken';
-import { generateToken } from '../services/authservices.js';
+import { generateToken } from '../services/authService.js';
 import pool from './utils/testDb.js';
 
 describe('generateToken()', () => {
@@ -36,7 +36,6 @@ describe('generateToken()', () => {
 
 describe('PostgreSQL auth services', () => {
   beforeAll(async () => {
-    
     await pool.query(`
       INSERT INTO users (email, password)
       VALUES ('test-auth@example.com', '$2b$10$QnJ3pTle7fCKlx1q0zHgLOV48xYIjo61J20UzMmkxLRjc6z9Yj8dO')
@@ -45,18 +44,16 @@ describe('PostgreSQL auth services', () => {
   });
   
   afterAll(async () => {
-    
     await pool.query("DELETE FROM users WHERE email = 'test-auth@example.com'");
     await pool.end();
   });
   
   it('findUserByEmail returns a user when exists', async () => {
-    
     const { findUserByEmail } = await import('../services/postgres/authService.js');
     
     const user = await findUserByEmail('test-auth@example.com');
     expect(user).toBeDefined();
-    expect(user.email).toBe('test-auth@example.com');
+    expect(user!.email).toBe('test-auth@example.com');
   });
   
   it('findUserByEmail returns undefined when user does not exist', async () => {
@@ -77,11 +74,9 @@ describe('PostgreSQL auth services', () => {
     expect(result).toHaveProperty('id');
     expect(result.id).toBeGreaterThan(0);
     
-    
     const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     expect(rows).toHaveLength(1);
     expect(rows[0].password).toBe(password);
-    
     
     await pool.query("DELETE FROM users WHERE email = $1", [email]);
   });

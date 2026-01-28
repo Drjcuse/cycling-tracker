@@ -1,10 +1,9 @@
-import { Ride } from "../types/Rides"; 
+import { Ride } from "../types/Rides.js"; 
 
 declare global {
   namespace Express {
     interface Request {
-      ride?: Ride;    
-      user?: { userId: number }; 
+      ride?: Ride;
     }
   }
 }

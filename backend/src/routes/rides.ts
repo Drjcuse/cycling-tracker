@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import {
   getAllRides,
@@ -7,15 +6,16 @@ import {
   updateRide,
   deleteRide,
 } from "../controllers/ridesController.js";
-import { requireAuth } from "../middleware/requireAuth.js";
-import { validateIdParam } from "../middleware/validateidparam.js";  
+import { validateIdParam } from "../middleware/validateIdParam.js";
+import { validateBody } from "../middleware/validate.js";
+import { rideSchema, updateRideSchema } from "../validation/rideSchema.js";
 
 const router = Router();
 
-router.get    ("/",    requireAuth, getAllRides);
-router.post   ("/",    requireAuth, createRide);
-router.get    ("/:id", requireAuth, validateIdParam("id"), getRideDetails);
-router.put    ("/:id", requireAuth, validateIdParam("id"), updateRide);
-router.delete ("/:id", requireAuth, validateIdParam("id"), deleteRide);
+router.get    ("/",    getAllRides);
+router.post   ("/",    validateBody(rideSchema), createRide);
+router.get    ("/:id", validateIdParam("id"), getRideDetails);
+router.put    ("/:id", validateIdParam("id"), validateBody(updateRideSchema), updateRide);
+router.delete ("/:id", validateIdParam("id"), deleteRide);
 
 export default router;

@@ -6,7 +6,8 @@
     "axios": "^1.9.0",
     "bcrypt": "^5.1.1",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.14.1"
+    "pg": "^8.14.1",
+    "zod": "^3.25.57"
   },
   "devDependencies": {
     "@babel/plugin-transform-modules-commonjs": "^7.26.3",
@@ -15,7 +16,7 @@
     "@types/cypress": "^0.1.6",
     "@types/express": "^5.0.1",
     "@types/jsonwebtoken": "^9.0.9",
-    "@types/node": "^22.14.1",
+    "@types/node": "^22.15.31",
     "@types/supertest": "^6.0.3",
     "babel-preset-current-node-syntax": "^1.1.0",
     "cross-env": "^7.0.3",

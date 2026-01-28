@@ -1,19 +1,10 @@
 import pool from "../db/index.js";
 import type { CreateRideInput, UpdateRideInput } from "../validation/rideSchema.js";
+import type { Ride } from "../types/Rides.js";
+import type { RideRow } from "../types/database.js";
+import { NotFoundError } from "../errors/AppError.js";
 
-interface Ride {
-  id: number;
-  name: string;
-  distanceKm: number;
-  duration_minutes?: number | null;
-  type?: string | null;
-  notes?: string | null;
-  userId: number;
-  created_at?: Date;
-}
-
-
-const mapRideFromDb = (row: any): Ride => ({
+const mapRideFromDb = (row: RideRow): Ride => ({
   id: row.id,
   name: row.name,
   distanceKm: row.distance_km,
@@ -24,11 +15,14 @@ const mapRideFromDb = (row: any): Ride => ({
   created_at: row.created_at
 });
 
-export const getRides = async (): Promise<Ride[]> => {
-  const { rows } = await pool.query(`
-    SELECT * FROM rides 
-    ORDER BY id ASC
-  `);
+export const getRides = async (userId?: number): Promise<Ride[]> => {
+  const query = userId 
+    ? `SELECT * FROM rides WHERE user_id = $1 ORDER BY id ASC`
+    : `SELECT * FROM rides ORDER BY id ASC`;
+  
+  const params = userId ? [userId] : [];
+  
+  const { rows } = await pool.query<RideRow>(query, params);
   
   return rows.map(mapRideFromDb);
 };
@@ -36,7 +30,7 @@ export const getRides = async (): Promise<Ride[]> => {
 export const addRide = async (input: CreateRideInput): Promise<Ride> => {
   const { name, distanceKm, duration_minutes, type, notes, userId } = input;
   
-  const { rows } = await pool.query(`
+  const { rows } = await pool.query<RideRow>(`
     INSERT INTO rides (name, distance_km, duration_minutes, type, notes, user_id) 
     VALUES ($1, $2, $3, $4, $5, $6)
     RETURNING *
@@ -46,12 +40,12 @@ export const addRide = async (input: CreateRideInput): Promise<Ride> => {
 };
 
 export const getRideById = async (id: number): Promise<Ride> => {
-  const { rows } = await pool.query(`
+  const { rows } = await pool.query<RideRow>(`
     SELECT * FROM rides WHERE id = $1
   `, [id]);
   
   if (rows.length === 0) {
-    throw new Error(`Ride with ID ${id} not found`);
+    throw new NotFoundError("Ride", id); 
   }
   
   return mapRideFromDb(rows[0]);
@@ -61,59 +55,39 @@ export const updateRideById = async (
   id: number,
   input: UpdateRideInput
 ): Promise<Ride> => {
-  
-  const { rows: existingRows } = await pool.query(`
+  const { rows: existingRows } = await pool.query<RideRow>(`
     SELECT * FROM rides WHERE id = $1
   `, [id]);
   
   if (existingRows.length === 0) {
-    throw new Error(`Ride with ID ${id} not found for update`);
+    throw new NotFoundError("Ride", id);  
   }
-  
   
   const params: any[] = [];
   const updateFields: string[] = [];
   
+  const fieldMapping: Record<string, string> = {
+    name: 'name',
+    distanceKm: 'distance_km',
+    duration_minutes: 'duration_minutes',
+    type: 'type',
+    notes: 'notes',
+    userId: 'user_id'
+  };
   
-  if (input.name !== undefined) {
-    params.push(input.name);
-    updateFields.push(`name = $${params.length}`);
-  }
-  
-  if (input.distanceKm !== undefined) {
-    params.push(input.distanceKm);
-    updateFields.push(`distance_km = $${params.length}`);
-  }
-  
-  if (input.duration_minutes !== undefined) {
-    params.push(input.duration_minutes);
-    updateFields.push(`duration_minutes = $${params.length}`);
-  }
-  
-  if (input.type !== undefined) {
-    params.push(input.type);
-    updateFields.push(`type = $${params.length}`);
-  }
-  
-  if (input.notes !== undefined) {
-    params.push(input.notes);
-    updateFields.push(`notes = $${params.length}`);
-  }
-  
-  if (input.userId !== undefined) {
-    params.push(input.userId);
-    updateFields.push(`user_id = $${params.length}`);
-  }
-  
+  Object.entries(input).forEach(([key, value]) => {
+    if (value !== undefined && key in fieldMapping) {
+      params.push(value);
+      updateFields.push(`${fieldMapping[key]} = $${params.length}`);
+    }
+  });
   
   if (updateFields.length === 0) {
     return mapRideFromDb(existingRows[0]);
   }
   
-  
   params.push(id);
   
- 
   const query = `
     UPDATE rides 
     SET ${updateFields.join(', ')} 
@@ -121,22 +95,21 @@ export const updateRideById = async (
     RETURNING *
   `;
   
-  const { rows } = await pool.query(query, params);
+  const { rows } = await pool.query<RideRow>(query, params);
   
   return mapRideFromDb(rows[0]);
 };
 
 export const deleteRideById = async (id: number): Promise<{ id: number }> => {
-  
-  const { rows: existingRows } = await pool.query(`
+  const { rows: existingRows } = await pool.query<RideRow>(`
     SELECT * FROM rides WHERE id = $1
   `, [id]);
   
   if (existingRows.length === 0) {
-    throw new Error(`Ride with ID ${id} not found for deletion`);
+    throw new NotFoundError("Ride", id);  
   }
   
-  const { rows } = await pool.query(`
+  const { rows } = await pool.query<RideRow>(`
     DELETE FROM rides WHERE id = $1
     RETURNING id
   `, [id]);
