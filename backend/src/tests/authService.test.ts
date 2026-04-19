@@ -1,4 +1,4 @@
-/// <reference types="vitest" />
+
 import jwt from 'jsonwebtoken';
 import { generateToken } from '../services/authService.js';
 import pool from './utils/testDb.js';
@@ -37,14 +37,25 @@ describe('generateToken()', () => {
 describe('PostgreSQL auth services', () => {
   beforeAll(async () => {
     await pool.query(`
-      INSERT INTO users (email, password)
-      VALUES ('test-auth@example.com', '$2b$10$QnJ3pTle7fCKlx1q0zHgLOV48xYIjo61J20UzMmkxLRjc6z9Yj8dO')
+      CREATE TABLE IF NOT EXISTS users (
+        id SERIAL PRIMARY KEY,
+        email VARCHAR(100) UNIQUE NOT NULL,
+        password VARCHAR(255) NOT NULL,
+        role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // 
+    await pool.query(`
+      INSERT INTO users (email, password, role)
+      VALUES ('test-auth@example.com', '$2b$10$QnJ3pTle7fCKlx1q0zHgLOV48xYIjo61J20UzMmkxLRjc6z9Yj8dO', 'user')
       ON CONFLICT (email) DO NOTHING
     `);
   });
   
   afterAll(async () => {
-    await pool.query("DELETE FROM users WHERE email = 'test-auth@example.com'");
+    await pool.query("DELETE FROM users WHERE email LIKE 'test-%@example.com'");
     await pool.end();
   });
   
@@ -54,6 +65,8 @@ describe('PostgreSQL auth services', () => {
     const user = await findUserByEmail('test-auth@example.com');
     expect(user).toBeDefined();
     expect(user!.email).toBe('test-auth@example.com');
+    
+    expect(user!.role).toBe('user');
   });
   
   it('findUserByEmail returns undefined when user does not exist', async () => {
@@ -63,7 +76,7 @@ describe('PostgreSQL auth services', () => {
     expect(user).toBeUndefined();
   });
   
-  it('createUser inserts a new user and returns the ID', async () => {
+  it('createUser inserts a new user and returns the ID and role', async () => {
     const { createUser } = await import('../services/postgres/authService.js');
     
     const email = `test-create-${Date.now()}@example.com`;
@@ -74,9 +87,15 @@ describe('PostgreSQL auth services', () => {
     expect(result).toHaveProperty('id');
     expect(result.id).toBeGreaterThan(0);
     
+    expect(result).toHaveProperty('role');
+    expect(result.role).toBe('user');
+    
+    
     const { rows } = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
     expect(rows).toHaveLength(1);
     expect(rows[0].password).toBe(password);
+    expect(rows[0].role).toBe('user');
+    
     
     await pool.query("DELETE FROM users WHERE email = $1", [email]);
   });

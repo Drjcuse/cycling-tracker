@@ -21,13 +21,6 @@ interface HealthResponse {
   };
 }
 
-/**
- * Health check endpoint for monitoring and load balancers
- * Checks:
- * - Database connectivity
- * - Memory usage
- * - Application uptime
- */
 router.get("/health", async (_req: Request, res: Response): Promise<void> => {
   const startTime = Date.now();
   const healthCheck: HealthResponse = {
@@ -46,7 +39,6 @@ router.get("/health", async (_req: Request, res: Response): Promise<void> => {
     }
   };
 
-  // Check database connectivity
   try {
     const dbStart = Date.now();
     await pool.query("SELECT 1");
@@ -60,15 +52,13 @@ router.get("/health", async (_req: Request, res: Response): Promise<void> => {
     healthCheck.checks.database.error = error instanceof Error ? error.message : "Unknown error";
   }
 
-  // Check memory usage
   const memUsage = process.memoryUsage();
   healthCheck.checks.memory = {
-    used: Math.round(memUsage.heapUsed / 1024 / 1024), // MB
-    total: Math.round(memUsage.heapTotal / 1024 / 1024), // MB
+    used: Math.round(memUsage.heapUsed / 1024 / 1024),
+    total: Math.round(memUsage.heapTotal / 1024 / 1024),
     percentUsed: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
   };
 
-  // Return appropriate status code
   const statusCode = healthCheck.status === "healthy" ? 200 : 503;
   const responseTime = Date.now() - startTime;
   

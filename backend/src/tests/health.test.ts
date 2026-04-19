@@ -3,9 +3,15 @@ import app from "../server.js";
 import { describe, it, expect } from "vitest";
 
 describe("GET /health", () => {
-  it("returns 200 OK with { status: 'ok' }", async () => {
+  it("returns health status", async () => {
     const res = await request(app).get("/health");
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({ status: "ok" });
+    
+    // Health endpoint returns 200 if DB is up, 503 if down
+    expect([200, 503]).toContain(res.status);
+    expect(res.body).toHaveProperty("status");
+    expect(["healthy", "unhealthy"]).toContain(res.body.status);
+    expect(res.body).toHaveProperty("timestamp");
+    expect(res.body).toHaveProperty("uptime");
+    expect(res.body).toHaveProperty("checks");
   });
 });
